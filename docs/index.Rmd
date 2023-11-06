@@ -1,5 +1,5 @@
 ---
-title: "Introduction_PCA_part.2"
+title: "Introduction to Principal Component Analysis, part 2"
 author: "Nurlan Dauletbayev"
 date: "2023-11-06"
 output: html_document
