@@ -1,0 +1,156 @@
+---
+title: "Introduction_PCA_part.2"
+author: "Nurlan Dauletbayev"
+date: "2023-11-06"
+output: html_document
+---
+# A. Package installation and custom function
+These two packages will be needed for an interactive 3D plot. Just copy and paste the code into your R script. The concept of R packages and their use will be discussed on a later occassion.
+```{r}
+if (!require("rgl")) {
+  install.packages("rgl", dependencies = TRUE)
+  library(rgl)
+}
+
+if (!require("car")) {
+  install.packages("car", dependencies = TRUE)
+  library(car)
+}
+```
+Custom function (see part 1 for details):
+```{r}
+panel.cor <- function(x, y, ...)
+{
+  par(usr = c(0, 1, 0, 1))
+  txt <- as.character(format(cor(x, y), digits = 3))
+  text(0.5, 0.5, txt,  cex = 2* abs(cor(x, y)))
+}
+```
+Generation of three vectors for the subsequent matrix (see part 1 for details):
+```{r}
+x_vect <- seq(2, 5, 0.1)
+print(x_vect)
+y_vect <- sin(x_vect)
+print(y_vect)
+set.seed(42)
+y1_vect <- jitter(y_vect, factor = 1, amount = 0.8)
+print(y1_vect)
+set.seed(42)
+z_vect <- jitter(log10(y1_vect + 12), factor = 1, amount = 0.8)
+print(z_vect)
+```
+# Principal Component Analysis (PCA) using toy examples (continued)
+PCA will next be explained on a three-dimensional toy example. We will combined three pre-defined vectors into a matrix. Please note the use of new R functions "dim()", "head()", and "tail()".
+```{r}
+
+Example.2 <- cbind(x_vect, y1_vect, z_vect)
+dim(Example.2)
+head(Example.2)
+tail(Example.2)
+df_Example.2 <- as.data.frame(Example.2)
+class(df_Example.2)
+```
+Characterization of a three- (and higher-) dimensional matrix can still be done using "boxplot()" and "stripchart()" functions, but function "plot()" used in part 1 won't be useful anymore because it is used to draw two-dimensional plots.
+```{r cars}
+boxplot(df_Example.2)
+stripchart(df_Example.2, method = "jitter", vertical = TRUE,
+           pch = 21, add = TRUE)
+```
+
+Instead of using function "plot()", we will use function "scatter3d()" of package "car". This function, utilizing another package ("rgl"), enables building the data points of the matrix in a three-dimensional model. Execution of the below script will lead to a poping-up window. Using cursor, you should try to rotate the model for better appreciation of how the data points relate to each other in different dimensions. Comment: the pop-up window will be called "RGL device 2 [Focus]"; rotation can be done by clicking with a cursor somewhere on the plot, and then holding the left mouse button and rotating the plot
+```{r}
+scatter3d(x = x_vect, y = y1_vect, z = z_vect,
+          point.col = "grey75", surface = FALSE)
+```
+
+As before, the matrix will be subjected to Z-normalization using function "scale()".
+```{r}
+Example.2_sc <- scale(Example.2, center = TRUE, scale = TRUE)
+print(Example.2_sc)
+df_Example.2_sc <- as.data.frame(Example.2_sc)
+print(df_Example.2_sc,
+      xlim = c(-4, 4), ylim = c(-2, 2))
+boxplot(df_Example.2_sc)
+stripchart(df_Example.2_sc, method = "jitter", vertical = TRUE,
+           pch = 21, add = TRUE)
+```
+
+We will next assess the "Example.2_sc" matrix for the presence of correlated variables.
+```{r}
+print(cor(Example.2_sc, method = "pearson"))
+pairs(Example.2_sc,
+      upper.panel = panel.cor)
+```
+
+You should study the output and try to understand it by comparing with the similar output of part 1 analysis.
+
+Since PCA has been explained in detail in part 1, this analysis will move on directly to the use of "prcomp()" function:
+```{r}
+prcomp_Example.2 <- prcomp(Example.2_sc,
+                           scale = FALSE)
+print(prcomp_Example.2) 
+summary(prcomp_Example.2)
+str(prcomp_Example.2)
+df_prcomp_Example.2 <- as.data.frame(prcomp_Example.2$x)
+print(df_prcomp_Example.2)
+```
+This will plot the matrix with coordinates from PC1 and PC2.
+```{r}
+plot(df_prcomp_Example.2$PC1,
+     df_prcomp_Example.2$PC2,
+     asp = 1,
+     pch = 21,
+     xlim = c(-4, 4),
+     ylim = c(-2, 2),
+     xlab = "PC1",
+     ylab = "PC2",
+     main = NA)
+points(x = mean(df_prcomp_Example.2$PC1),
+       y = mean(df_prcomp_Example.2$PC2), 
+       col = "gray50", pch = 18, cex = 2)
+abline(a = 0, b = 0, col = "navyblue", lty = 1, lwd = 1.5)
+abline(v = 0, col = "firebrick2", lty = 2, lwd = 1.5)
+```
+
+This will plot the matrix with coordinates from PC1 and PC3.
+```{r}
+plot(df_prcomp_Example.2$PC1,
+     df_prcomp_Example.2$PC3,
+     asp = 1,
+     pch = 21,
+     xlim = c(-4, 4),
+     ylim = c(-2, 2),
+     xlab = "PC1",
+     ylab = "PC3",
+     main = NA)
+points(x = mean(df_prcomp_Example.2$PC1),
+       y = mean(df_prcomp_Example.2$PC3), 
+       col = "gray50", pch = 18, cex = 2)
+abline(a = 0, b = 0, col = "navyblue", lty = 1, lwd = 1.5)
+abline(v = 0, col = "darkgreen", lty = 2, lwd = 1.5)
+```
+
+From the latter plot, it is very obvious that the greatest majority of matrix variation is "packed" in PC1 and PC2.
+
+The analysis by "prcomp()" function provides additional useful information. In particular, it is possible to use some of the output of the latter analysis to visualize the correlation between the variables of the matrix and Principal Components. In the analysis by "prcomp()" function, the loadings are called "Rotation" (refer to part 1 for details on axis rotation). The script below will assign "Rotation" to loadings and then use loadings as input for bar plots.
+```{r}
+print(prcomp_Example.2)
+print(prcomp_Example.2$rotation[, 1])
+PC1_Loading <- prcomp_Example.2$rotation[, 1]
+print(PC1_Loading)
+print(prcomp_Example.2$rotation[, 2])
+PC2_Loading <- prcomp_Example.2$rotation[, 2]
+print(PC2_Loading)
+print(prcomp_Example.2$rotation[, 3])
+PC3_Loading <- prcomp_Example.2$rotation[, 3]
+print(PC3_Loading)
+
+# this builds the plot
+barplot(PC1_Loading, ylab = "PC1 Loading", ylim = c(-1, 1))
+barplot(PC2_Loading, ylab = "PC2 Loading", ylim = c(-1, 1))
+barplot(PC3_Loading, ylab = "PC3 Loading", ylim = c(-1, 1))
+```
+
+These bar plots can be explained as follows. Loadings are correlation coefficients that describe the linear association between the variables of the analyzed matrix and the resulting Principal Components. Loadings range from -1 (= strong negative correlation) to +1 (= strong positive correlation). Here, variable "x_vect" positively correlates with PC1 (= 0.5593958), whereas variables "y1_vect" and "z_vect" negative correlate with this Principal Component (respectively, -0.6903053 and -0.4588627).
+
+It is possible to calculate the relative importance of a particular variable to a respective Principal Component. For this, squared loadings (also called "squared cosine") are typically used. 
